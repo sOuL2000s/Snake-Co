@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>All Recordings</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f8f9fa; color: #333; }
+        .container { max-width: 800px; margin: auto; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        h1 { color: #0056b3; }
+        ul { list-style-type: none; padding: 0; }
+        li { margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 8px; }
+        li a { text-decoration: none; color: #007bff; font-weight: bold; }
+        li a:hover { text-decoration: underline; }
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: #6c757d;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+        .back-link:hover {
+            background-color: #5a6268;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>All Recorded Videos</h1>
+        {% if videos %}
+            <ul>
+                {% for video in videos %}
+                    <li><a href="/recordings/{{ video }}">{{ video }}</a></li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>No recordings found yet.</p>
+        {% endif %}
+        <a href="/" class="back-link">Back to Dashboard</a>
+    </div>
+</body>
+</html>

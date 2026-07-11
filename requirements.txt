@@ -1,0 +1,6 @@
+Flask==2.3.3
+websockets==11.0.3
+mss==9.0.1
+opencv-python==4.8.0.76
+requests==2.31.0
+asyncio==3.4.3 # Though asyncio is built-in, this specifies the backport if needed for older Python or clarifies intent.

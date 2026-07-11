@@ -1,0 +1,1574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snake: Modern Arcade Edition</title>
+    <!-- Google Fonts: Orbitron for display, Inter for UI -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Orbitron:wght@700;800&display=swap" rel="stylesheet">
+    <!-- Heroicons for modern icons (optional, could use unicode emojis or Font Awesome) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        /* Universal Box Sizing */
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+
+        /* CSS Variables - Refined and Extended */
+        :root {
+            /* Color Palette */
+            --bg-dark: #0F172A; /* Slate 900 */
+            --bg-medium: #17253B; /* Slightly lighter than dark for depth */
+            --bg-light: #2D3A50; /* Slate 700 for cards/panels */
+            --primary-green: #22C55E; /* Emerald 500 */
+            --primary-green-dark: #16A34A; /* Emerald 600 */
+            --secondary-cyan: #06B6D4; /* Cyan 500 */
+            --danger-red: #EF4444; /* Red 500 */
+            --text-light: #F8FAFC; /* White */
+            --text-muted: #94A3B8; /* Slate 400 */
+            --border-color: rgba(255, 255, 255, 0.12); /* Subtle light border */
+            --glass-bg: rgba(255, 255, 255, 0.08); /* Common glassmorphism background */
+            --glass-border: rgba(255, 255, 255, 0.15); /* Common glassmorphism border */
+            --glass-blur: 18px; /* Common glassmorphism blur */
+
+            /* Spacing (using consistent rem/em or vmin for responsiveness) */
+            --spacing-xs: 0.5rem;
+            --spacing-sm: 0.75rem;
+            --spacing-md: 1rem;
+            --spacing-lg: 1.5rem;
+            --spacing-xl: 2.5rem; /* Increased for better visual separation */
+            --spacing-xxl: 4rem;
+
+            /* Border Radius */
+            --radius-sm: 0.5rem; /* 8px */
+            --radius-md: 1rem; /* 16px */
+            --radius-lg: 1.25rem; /* 20px */
+            --radius-xl: 1.5rem; /* 24px */
+            --radius-round: 50%;
+
+            /* Shadows (more premium, softer) */
+            --shadow-sm: 0 4px 10px rgba(0, 0, 0, 0.15);
+            --shadow-md: 0 12px 30px rgba(0, 0, 0, 0.3);
+            --shadow-lg: 0 25px 50px rgba(0, 0, 0, 0.5);
+            --glow-primary: 0 0 25px var(--primary-green-dark), 0 0 60px rgba(34, 197, 94, 0.3);
+            --glow-primary-subtle: 0 0 15px rgba(34, 197, 94, 0.15); /* Less intense */
+            --glow-red: 0 0 25px var(--danger-red), 0 0 60px rgba(239, 68, 68, 0.3);
+            --glow-cyan: 0 0 25px var(--secondary-cyan), 0 0 60px rgba(6, 182, 212, 0.3);
+            --glow-pink: 0 0 25px #EC4899, 0 0 60px rgba(236, 72, 153, 0.3);
+            --glow-purple: 0 0 25px #8B5CF6, 0 0 60px rgba(139, 92, 246, 0.3);
+        }
+
+        /* Base Styles */
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+            font-size: 16px; /* Base font size for rem units */
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: radial-gradient(circle at 20% 20%, rgba(34, 197, 94, 0.15), transparent 50%),
+                        radial-gradient(circle at 80% 80%, rgba(59, 130, 246, 0.15), transparent 50%),
+                        linear-gradient(135deg, var(--bg-dark) 0%, var(--bg-medium) 100%);
+            background-attachment: fixed; /* Keep background fixed during scroll (if any) */
+            color: var(--text-light);
+            font-family: 'Inter', sans-serif;
+            transition: opacity 1s ease-in-out;
+            opacity: 0;
+            position: relative; /* For potential future background animations */
+        }
+
+        body.loaded {
+            opacity: 1;
+        }
+
+        /* Utility classes */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border-width: 0;
+        }
+
+        /* Game Header */
+        .game-header {
+            margin-bottom: var(--spacing-lg);
+            margin-top: var(--spacing-lg);
+            pointer-events: none; /* Prevent selection/interaction with title */
+            user-select: none;
+            text-align: center;
+        }
+
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            color: var(--primary-green);
+            font-size: clamp(2.5rem, 6vmin, 4rem); /* Responsive sizing */
+            font-weight: 800;
+            letter-spacing: 0.15rem;
+            text-shadow: 0 0 15px var(--primary-green);
+            white-space: nowrap;
+            margin: 0;
+            line-height: 1;
+            transform: scale(1); /* Base for animation */
+            transition: transform 0.3s ease-out;
+        }
+        h1:hover {
+            transform: scale(1.02); /* Subtle hover for title */
+        }
+
+        .subtitle {
+            font-family: 'Inter', sans-serif;
+            font-size: clamp(0.9rem, 2vmin, 1.25rem);
+            color: var(--text-muted);
+            margin-top: var(--spacing-xs);
+            letter-spacing: 0.05rem;
+        }
+
+        /* Game Container - Core Layout */
+        .game-container {
+            position: relative; /* CRITICAL: Allows absolute positioning of overlays relative to this container */
+            background: var(--glass-bg);
+            backdrop-filter: blur(var(--glass-blur));
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-lg), var(--glow-primary-subtle);
+            padding: var(--spacing-xl); /* Increased padding for more premium feel */
+            text-align: center;
+            /* box-sizing: border-box;  Moved to universal selector */
+            display: flex;
+            flex-direction: column;
+            /* REMOVED: justify-content: space-between; */
+            align-items: center;
+            width: min(95vw, 900px);
+            height: min(95vh, 900px);
+            gap: var(--spacing-lg); /* Increased gap */
+            transition: all 0.6s ease-in-out; /* Smooth transition for fullscreen */
+            overflow: hidden; /* Prevent child elements from overflowing rounded corners */
+        }
+
+        /* Score Board */
+        .score-board {
+            display: flex;
+            justify-content: center;
+            gap: var(--spacing-md);
+            width: 100%;
+            /* REMOVED: margin-bottom: var(--spacing-md); */
+            flex-wrap: wrap; /* Allow score cards to wrap */
+        }
+
+        .stat-card {
+            background: var(--bg-light);
+            padding: var(--spacing-md);
+            border-radius: var(--radius-md);
+            flex: 1;
+            min-width: 140px; /* Slightly larger min-width */
+            max-width: 220px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            user-select: none;
+            pointer-events: none;
+        }
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .stat-card .label {
+            font-size: clamp(0.75rem, 1.5vmin, 0.9rem);
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08rem;
+            margin-bottom: var(--spacing-xs);
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .stat-card .value {
+            font-family: 'Orbitron', sans-serif;
+            font-size: clamp(1.5rem, 3.5vmin, 2.2rem);
+            font-weight: 700;
+            color: var(--text-light);
+            text-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
+            transition: transform 0.2s ease-out, color 0.2s ease-out, text-shadow 0.2s ease-out;
+            will-change: transform, color, text-shadow; /* Optimize animation */
+        }
+
+        /* Canvas Area */
+        .canvas-wrapper {
+            flex: 1;
+            min-height: 0; /* ADDED: Allow flex item to shrink below content size */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            max-width: 100%; /* Ensure it respects container bounds */
+            max-height: 100%;
+        }
+
+        canvas {
+            background-color: var(--bg-medium);
+            border: 2px solid var(--border-color);
+            box-shadow: var(--glow-primary-subtle);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            display: block;
+            /* REMOVED: width: 100%; */
+            /* REMOVED: height: 100%; */
+            aspect-ratio: 1 / 1;
+            max-width: 100%;
+            max-height: 100%;
+            transition: width 0.4s ease-in-out, height 0.4s ease-in-out, max-width 0.4s ease-in-out, max-height 0.4s ease-in-out, box-shadow 0.3s ease, border-color 0.3s ease, border-radius 0.3s ease;
+            will-change: width, height, max-width, max-height, box-shadow, border-color, border-radius;
+            outline: none; /* Remove default focus outline */
+        }
+        canvas:focus-visible {
+            box-shadow: var(--glow-primary);
+            border-color: var(--primary-green);
+        }
+
+        /* Neon Border/Glow effects */
+        canvas.glow-food {
+            box-shadow: var(--glow-primary);
+            border-color: var(--primary-green);
+        }
+        canvas.glow-gameover {
+            box-shadow: var(--glow-red);
+            border-color: var(--danger-red);
+            animation: pulseRed 0.8s infinite alternate;
+        }
+        @keyframes pulseRed {
+            from { box-shadow: 0 0 10px var(--danger-red), 0 0 20px rgba(239, 68, 68, 0.3); border-color: var(--danger-red); }
+            to { box-shadow: 0 0 30px var(--danger-red), 0 0 60px rgba(239, 68, 68, 0.6); border-color: var(--danger-red); }
+        }
+
+        #message {
+            font-size: clamp(0.8rem, 1.5vmin, 1.1rem);
+            margin-top: var(--spacing-sm);
+            color: var(--secondary-cyan);
+            min-height: 1.5rem;
+            user-select: none;
+        }
+
+        /* Desktop Controls */
+        .controls {
+            display: flex;
+            gap: var(--spacing-md);
+            /* REMOVED: margin-top: var(--spacing-lg); */
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+        }
+
+        button {
+            border: none;
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md) var(--spacing-xl);
+            font-family: 'Inter', sans-serif;
+            font-size: clamp(0.9rem, 1.8vmin, 1.1rem);
+            font-weight: 600;
+            cursor: pointer;
+            color: var(--bg-dark); /* Dark text for better contrast on colorful buttons */
+            transition: background 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
+            box-shadow: var(--shadow-sm);
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            outline: none;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
+        }
+
+        button i {
+            font-size: 1.1em; /* Adjust icon size relative to text */
+        }
+
+        #pauseButton {
+            background: linear-gradient(135deg, var(--primary-green), var(--primary-green-dark));
+        }
+        #pauseButton:hover {
+            box-shadow: var(--shadow-md), var(--glow-primary);
+        }
+
+        #restartButton {
+            background: linear-gradient(135deg, var(--secondary-cyan), #0891B2); /* Cyan 500 to 700 */
+        }
+        #restartButton:hover {
+            box-shadow: var(--shadow-md), var(--glow-cyan);
+        }
+
+        #settingsButton {
+            background: linear-gradient(135deg, #8B5CF6, #7C3AED); /* Violet 500 to 700 */
+        }
+        #settingsButton:hover {
+            box-shadow: var(--shadow-md), var(--glow-purple);
+        }
+
+        #soundToggleButton {
+            background: linear-gradient(135deg, var(--secondary-cyan), #0891B2); /* Cyan 500 to 700 */
+        }
+        #soundToggleButton:hover {
+            box-shadow: var(--shadow-md), var(--glow-cyan);
+        }
+
+        button:hover {
+            transform: translateY(-0.2rem) scale(1.02);
+        }
+
+        button:active {
+            transform: translateY(0) scale(0.98);
+            box-shadow: var(--shadow-sm);
+        }
+        button:focus-visible {
+            outline: 2px solid var(--secondary-cyan);
+            outline-offset: 2px;
+            box-shadow: var(--glow-cyan);
+        }
+
+
+        /* Pause/Game Over Overlay */
+        .pause-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9); /* Darker overlay for better contrast */
+            backdrop-filter: blur(var(--glass-blur));
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: var(--text-light);
+            font-family: 'Orbitron', sans-serif;
+            pointer-events: none;
+            z-index: 10; /* Lower z-index than settings, so settings can appear on top */
+            border-radius: var(--radius-xl); /* Match container border-radius */
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.4s ease-in-out, visibility 0.4s ease-in-out;
+            padding: var(--spacing-lg);
+            /* box-sizing: border-box; */
+            gap: var(--spacing-lg); /* Increased gap for better spacing */
+        }
+        .pause-overlay.active {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+        }
+
+        /* Settings Overlay - Inherits base modal styles from .pause-overlay if applicable, adds specific positioning */
+        .settings-overlay {
+            position: absolute; /* CRITICAL: Position as an overlay */
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.95); /* Slightly darker for settings */
+            backdrop-filter: blur(calc(var(--glass-blur) + 5px)); /* More blur for settings */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: var(--text-light);
+            font-family: 'Orbitron', sans-serif;
+            pointer-events: none;
+            z-index: 11; /* Higher z-index to appear on top of game overlay */
+            border-radius: var(--radius-xl);
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.4s ease-in-out, visibility 0.4s ease-in-out;
+            padding: var(--spacing-lg);
+            /* box-sizing: border-box; */
+            gap: var(--spacing-lg);
+        }
+        .settings-overlay.active {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+        }
+        .settings-overlay .modal {
+            /* Keep existing modal styles */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            width: min(90%, 480px); /* Larger, more responsive modal width */
+            padding: var(--spacing-xxl) var(--spacing-xl); /* Generous padding */
+            background: var(--glass-bg);
+            backdrop-filter: blur(calc(var(--glass-blur) + 5px)); /* Slightly more blur */
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-lg), var(--glow-primary-subtle);
+            gap: var(--spacing-md);
+            text-shadow: none;
+            transition: all 0.3s ease-in-out;
+        }
+        .settings-overlay.active .modal {
+            animation: modalPopIn 0.4s ease-out forwards;
+        }
+
+        /* Re-use overlay-icon/title/text styles for settings modal too for consistency */
+        .settings-overlay .overlay-icon { color: var(--secondary-cyan); text-shadow: 0 0 15px rgba(6, 182, 212, 0.7); }
+        .settings-overlay .overlay-title { color: var(--secondary-cyan); text-shadow: 0 0 18px rgba(6, 182, 212, 0.8); }
+        .settings-overlay .overlay-text { color: var(--text-light); } /* Default for generic text */
+
+        .fullscreen-choice {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-top: var(--spacing-md);
+            font-family: 'Inter', sans-serif;
+            font-size: clamp(0.9rem, 2vmin, 1.1rem);
+            color: var(--text-light);
+            cursor: pointer;
+            user-select: none;
+        }
+        .fullscreen-choice input[type="checkbox"] {
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            width: 1.5rem;
+            height: 1.5rem;
+            background: var(--bg-light);
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+            position: relative;
+            outline: none;
+        }
+        .fullscreen-choice input[type="checkbox"]:checked {
+            background: var(--primary-green);
+            border-color: var(--primary-green-dark);
+            box-shadow: 0 0 8px var(--primary-green);
+        }
+        .fullscreen-choice input[type="checkbox"]:focus-visible {
+            border-color: var(--secondary-cyan);
+            box-shadow: 0 0 10px var(--secondary-cyan);
+        }
+        .fullscreen-choice input[type="checkbox"]::after {
+            content: '\2713'; /* Checkmark character */
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            font-size: 1.2rem;
+            color: var(--bg-dark); /* Dark checkmark on green background */
+            transition: transform 0.2s ease-out;
+        }
+        .fullscreen-choice input[type="checkbox"]:checked::after {
+            transform: translate(-50%, -50%) scale(1);
+        }
+        .fullscreen-choice label {
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .fullscreen-choice label i {
+            font-size: 1.1em;
+            color: var(--primary-green);
+            transition: color 0.2s ease;
+        }
+        .fullscreen-choice input[type="checkbox"]:checked + label i {
+            color: var(--primary-green); /* Stays green when checked */
+        }
+        .fullscreen-choice input[type="checkbox"] + label i.fa-volume-xmark {
+            color: var(--danger-red); /* Indicate muted state */
+        }
+
+        .pause-overlay .modal {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            width: min(90%, 480px); /* Larger, more responsive modal width */
+            padding: var(--spacing-xxl) var(--spacing-xl); /* Generous padding */
+            background: var(--glass-bg);
+            backdrop-filter: blur(calc(var(--glass-blur) + 5px)); /* Slightly more blur */
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-lg), var(--glow-primary-subtle);
+            gap: var(--spacing-md);
+            text-shadow: none;
+            transition: all 0.3s ease-in-out;
+        }
+        .pause-overlay.active .modal {
+            animation: modalPopIn 0.4s ease-out forwards;
+        }
+        @keyframes modalPopIn {
+            from { opacity: 0; transform: translateY(20px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .pause-overlay .overlay-icon {
+            font-size: clamp(3rem, 10vmin, 5rem);
+            margin-bottom: var(--spacing-sm);
+            line-height: 1;
+            color: var(--primary-green);
+            text-shadow: 0 0 15px rgba(0, 255, 0, 0.7); /* Subtle icon glow */
+        }
+
+        .pause-overlay .overlay-title {
+            font-size: clamp(1.8rem, 6vmin, 3.5rem);
+            font-weight: 800;
+            color: var(--primary-green);
+            text-shadow: 0 0 18px rgba(0, 255, 0, 0.8);
+            letter-spacing: 0.1rem;
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .pause-overlay .overlay-text {
+            font-family: 'Inter', sans-serif;
+            font-size: clamp(0.9rem, 2.5vmin, 1.25rem);
+            color: var(--text-light);
+            margin-top: var(--spacing-sm);
+            text-shadow: 0 0 3px rgba(0, 0, 0, 0.5);
+            line-height: 1.4;
+            text-align: center;
+        }
+
+        .pause-overlay .overlay-score-detail {
+            font-family: 'Inter', sans-serif;
+            font-size: clamp(1rem, 3vmin, 1.75rem);
+            color: var(--text-muted);
+            margin-top: var(--spacing-xs);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            white-space: nowrap; /* Prevent score details from wrapping awkwardly */
+        }
+        .pause-overlay .overlay-score-detail .value {
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            color: var(--text-light);
+            text-shadow: 0 0 5px rgba(0, 0, 0, 0.4);
+            transition: color 0.2s ease, text-shadow 0.2s ease;
+        }
+        .pause-overlay .overlay-score-detail.new-high-score .value {
+            color: var(--secondary-cyan); /* Highlight new high score */
+            text-shadow: 0 0 10px var(--secondary-cyan);
+        }
+
+        .difficulty-selector {
+            margin-top: var(--spacing-md);
+            margin-bottom: var(--spacing-md);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            flex-wrap: wrap; /* Allow wrapping on small screens */
+            justify-content: center;
+        }
+        .difficulty-selector label {
+            font-family: 'Inter', sans-serif;
+            font-size: clamp(0.9rem, 2vmin, 1.1rem);
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+        .difficulty-selector select {
+            background: var(--bg-light);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: var(--spacing-xs) var(--spacing-sm);
+            color: var(--text-light);
+            font-family: 'Inter', sans-serif;
+            font-size: clamp(0.9rem, 2vmin, 1.1rem);
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            cursor: pointer;
+            outline: none;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+            min-width: 100px; /* Ensure a decent size */
+        }
+        .difficulty-selector select:hover {
+            border-color: var(--primary-green);
+            box-shadow: 0 0 5px var(--primary-green-dark);
+            background-color: var(--bg-medium);
+        }
+        .difficulty-selector select:focus-visible {
+            border-color: var(--secondary-cyan);
+            box-shadow: 0 0 8px var(--secondary-cyan);
+            background-color: var(--bg-medium);
+        }
+        /* Custom arrow for select dropdown */
+        .difficulty-selector select {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath fill='%2394A3B8' d='M10 12l-6-6h12l-6 6z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.5rem center;
+            background-size: 0.8rem;
+            padding-right: 2rem; /* Make space for the arrow */
+        }
+
+        .pause-overlay .overlay-buttons {
+            display: flex;
+            justify-content: center;
+            gap: var(--spacing-md);
+            margin-top: var(--spacing-xl);
+            pointer-events: auto;
+            flex-wrap: wrap;
+        }
+        .pause-overlay .overlay-buttons button {
+            min-width: 150px; /* Slightly wider buttons */
+            height: 52px; /* Taller buttons */
+            border-radius: var(--radius-md); /* Consistent button radius */
+            font-size: clamp(0.95rem, 2vmin, 1.1rem);
+            gap: 0.6rem;
+        }
+
+        /* Specific overlay button styles (reuse main button styles for consistency) */
+        .pause-overlay .overlay-play-button { background: linear-gradient(135deg, var(--primary-green), var(--primary-green-dark)); }
+        .pause-overlay .overlay-play-button:hover { box-shadow: var(--shadow-md), var(--glow-primary); }
+
+        .pause-overlay .overlay-restart-button { background: linear-gradient(135deg, var(--secondary-cyan), #0891B2); }
+        .pause-overlay .overlay-restart-button:hover { box-shadow: var(--shadow-md), var(--glow-cyan); }
+
+        .pause-overlay .overlay-settings-button { background: linear-gradient(135deg, #8B5CF6, #7C3AED); /* Violet 500 to 700 */ }
+        .pause-overlay .overlay-settings-button:hover { box-shadow: var(--shadow-md), var(--glow-purple); }
+
+        /* Removed .overlay-exit-fullscreen-button styles as fullscreen is removed */
+
+        /* Mobile Controls Styling (D-Pad) */
+        .mobile-controls {
+            display: none; /* Hidden by default, shown via media query */
+            flex-direction: column;
+            align-items: center;
+            margin-top: var(--spacing-xl);
+            width: min(90%, 320px); /* Responsive width for mobile controls */
+            gap: var(--spacing-md);
+            touch-action: none;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .mobile-controls .horizontal-buttons {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+        }
+
+        .mobile-controls .mobile-button {
+            background: linear-gradient(135deg, var(--bg-light), var(--bg-medium));
+            color: var(--text-light);
+            border: 1px solid var(--border-color);
+            padding: 0;
+            font-size: clamp(1.5rem, 4vmin, 2.5rem);
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: var(--radius-round);
+            transition: background 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+            box-shadow: var(--shadow-sm);
+            width: 10vmin; /* Larger touch target relative to viewport */
+            height: 10vmin;
+            min-width: 65px; /* Minimum size for touch target */
+            min-height: 65px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-shadow: 0 0 5px rgba(0, 0, 0, 0.4);
+            outline: none;
+        }
+
+        .mobile-controls .mobile-button:hover {
+            transform: translateY(-0.2rem) scale(1.05);
+            box-shadow: var(--shadow-md), 0 0 15px rgba(34, 197, 94, 0.3);
+            background: linear-gradient(135deg, var(--primary-green), var(--primary-green-dark));
+            border-color: var(--primary-green);
+        }
+
+        .mobile-controls .mobile-button:active {
+            transform: scale(0.95);
+            box-shadow: var(--shadow-sm), 0 0 8px rgba(34, 197, 94, 0.2);
+            background: var(--primary-green-dark);
+            border-color: var(--primary-green-dark);
+        }
+        .mobile-controls .mobile-button:focus-visible {
+            outline: 2px solid var(--secondary-cyan);
+            outline-offset: 2px;
+            box-shadow: var(--glow-cyan);
+        }
+
+        /* Game Footer */
+        .game-footer {
+            margin-top: var(--spacing-xl);
+            margin-bottom: var(--spacing-lg);
+            font-size: clamp(0.7rem, 1.5vmin, 0.9rem);
+            color: var(--text-muted);
+            text-align: center;
+            user-select: none;
+        }
+
+        /* Responsive Adjustments for Mobile */
+        @media (max-width: 768px) {
+            body {
+                gap: var(--spacing-md);
+            }
+
+            .game-header {
+                margin-bottom: var(--spacing-md);
+            }
+
+            .game-container {
+                padding: var(--spacing-lg);
+                gap: var(--spacing-md);
+            }
+
+            .score-board {
+                margin-bottom: var(--spacing-md);
+                gap: var(--spacing-sm);
+            }
+            .stat-card {
+                min-width: unset; /* Allow cards to be more flexible */
+                max-width: unset;
+                flex: 1 1 45%; /* Allow two cards per row on small screens */
+            }
+
+            .controls {
+                display: none; /* Hide desktop controls on smaller screens */
+            }
+            .mobile-controls {
+                display: flex; /* Show mobile controls */
+                margin-top: var(--spacing-lg); /* Adjust spacing */
+            }
+            .game-footer {
+                margin-top: var(--spacing-lg);
+            }
+        }
+
+
+
+        /* Hide desktop controls always, show mobile via media query */
+        @media (min-width: 769px) { /* On desktop-like sizes */
+            .mobile-controls {
+                display: none;
+            }
+        }
+        @media (max-width: 768px) { /* On tablet/mobile sizes */
+            .controls {
+                display: none;
+            }
+            .mobile-controls {
+                display: flex;
+            }
+        }
+    </style>
+</head>
+<body class="loaded">
+    <div class="game-header">
+        <h1>🐍 SNAKE</h1>
+        <p class="subtitle">Modern Arcade Edition</p>
+    </div>
+    <div class="game-container">
+        <div class="score-board">
+            <div id="scoreCard" class="stat-card" aria-live="polite" aria-atomic="true">
+                <span class="label"><i class="fa-solid fa-star"></i> SCORE</span>
+                <span class="value">0</span>
+            </div>
+            <div id="highScoreCard" class="stat-card" aria-live="polite" aria-atomic="true">
+                <span class="label"><i class="fa-solid fa-trophy"></i> HIGH SCORE</span>
+                <span class="value">0</span>
+            </div>
+            <!-- Optional: Add speed card -->
+            <!-- <div id="speedCard" class="stat-card" aria-live="polite" aria-atomic="true">
+                <span class="label"><i class="fa-solid fa-gauge-high"></i> SPEED</span>
+                <span class="value">1x</span>
+            </div> -->
+        </div>
+
+        <div class="canvas-wrapper">
+            <canvas id="gameCanvas" role="application" aria-label="Snake Game Arena" tabindex="0"></canvas>
+        </div>
+
+        <!-- Overlays are now direct children of game-container to cover all content -->
+        <div id="gameOverlay" class="pause-overlay"> <!-- CRITICAL: Changed class to pause-overlay -->
+            <!-- Content dynamically set by JavaScript for start, pause, game over -->
+        </div>
+
+        <!-- New Settings Overlay -->
+        <div id="settingsOverlay" class="settings-overlay">
+            <div class="modal">
+                <div class="overlay-icon"><i class="fa-solid fa-gear"></i></div>
+                <div class="overlay-title">SETTINGS</div>
+                <div class="difficulty-selector">
+                    <label for="settingsDifficulty">Difficulty:</label>
+                    <select id="settingsDifficulty">
+                        <option value="easy">Easy</option>
+                        <option value="medium">Medium</option>
+                        <option value="hard">Hard</option>
+                    </select>
+                </div>
+                <div class="fullscreen-choice"> <!-- Reusing .fullscreen-choice for sound toggle styling -->
+                    <input type="checkbox" id="settingsSoundToggle">
+                    <label for="settingsSoundToggle"><i class="fa-solid fa-volume-high"></i> Sound</label>
+                </div>
+                <div class="overlay-buttons">
+                    <button class="overlay-close-button" aria-label="Close Settings"><i class="fa-solid fa-check"></i> Done</button>
+                </div>
+            </div>
+        </div>
+
+        <p id="message" aria-live="polite" aria-atomic="true"></p>
+
+        <div class="controls" id="desktopControls">
+            <button id="restartButton" aria-label="Restart Game" title="Restart Game (R)">
+                <i class="fa-solid fa-arrows-rotate"></i> Restart
+            </button>
+            <button id="pauseButton" aria-label="Pause or Play Game" title="Pause/Play (P/Space)">
+                <i class="fa-solid fa-play"></i> Play
+            </button>
+
+            <button id="settingsButton" aria-label="Open Settings" title="Game Settings">
+                <i class="fa-solid fa-gear"></i> Settings
+            </button>
+        </div>
+
+        <!-- Mobile Controls (Directional Pad) -->
+        <div id="mobileControls" class="mobile-controls">
+            <button class="mobile-button" data-direction="up" aria-label="Move Up">
+                <i class="fa-solid fa-caret-up"></i>
+            </button>
+            <div class="horizontal-buttons">
+                <button class="mobile-button" data-direction="left" aria-label="Move Left">
+                    <i class="fa-solid fa-caret-left"></i>
+                </button>
+                <button class="mobile-button" data-direction="right" aria-label="Move Right">
+                    <i class="fa-solid fa-caret-right"></i>
+                </button>
+            </div>
+            <button class="mobile-button" data-direction="down" aria-label="Move Down">
+                <i class="fa-solid fa-caret-down"></i>
+            </button>
+        </div>
+    </div>
+
+    <div class="game-footer">
+        <p>Use Arrow Keys or WASD & Mobile D-Pad | Press 'P' or Space to Pause</p>
+        <p>Made with <i class="fa-solid fa-heart" style="color: #DB2777;"></i> and HTML Canvas</p>
+    </div>
+
+    <script>
+        // Get the canvas and its 2D rendering context
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Ensure crisp pixel rendering on canvas
+        ctx.imageSmoothingEnabled = false;
+
+        // Get score and message elements
+        const scoreCardValue = document.querySelector('#scoreCard .value');
+        const highScoreCardValue = document.querySelector('#highScoreCard .value');
+        const messageDisplay = document.getElementById('message');
+
+        // Control buttons
+        const restartButton = document.getElementById('restartButton');
+        const playPauseButton = document.getElementById('pauseButton'); // Renamed for clarity
+        const settingsButton = document.getElementById('settingsButton');
+
+        // Overlays
+        const gameOverlay = document.getElementById('gameOverlay'); // Renamed from pauseOverlay
+        const settingsOverlay = document.getElementById('settingsOverlay');
+        const mobileControls = document.getElementById('mobileControls');
+        const gameContainer = document.querySelector('.game-container'); // Ensure this is defined globally
+
+        // Game settings
+        const TARGET_CELLS_PER_SIDE = 20;
+        let gridSize;
+
+        let canvasWidth;
+        let canvasHeight;
+
+        let difficulty = 'medium';
+        let initialGameSpeed;
+        let speedIncrement;
+
+        let gameSpeed = 200;
+        let animationFrameId;
+        let lastFrameTime = 0;
+        let timeSinceLastGameUpdate = 0;
+
+        // Game state variables
+        let snake = [];
+        let food = {};
+        let direction = 'right';
+        let changingDirection = false;
+        let score = 0;
+        let highScore = parseInt(localStorage.getItem('snakeHighScore') || '0', 10);
+        let gameOver = false;
+        let isPaused = true;
+        let isSoundOn = localStorage.getItem('snakeSoundState') === 'on' || localStorage.getItem('snakeSoundState') === null; // Default to on
+
+        // Canvas drawing colors (using CSS variables for consistency)
+        const SNAKE_COLOR = getComputedStyle(document.documentElement).getPropertyValue('--primary-green').trim();
+        const SNAKE_GLOW_COLOR = getComputedStyle(document.documentElement).getPropertyValue('--primary-green').trim();
+        const FOOD_COLOR = getComputedStyle(document.documentElement).getPropertyValue('--danger-red').trim();
+        const FOOD_GLOW_COLOR = getComputedStyle(document.documentElement).getPropertyValue('--danger-red').trim();
+        const GRID_COLOR = 'rgba(255, 255, 255, 0.08)';
+
+        // Sound effects (Ensure these paths are correct, e.g., create a 'sounds' folder)
+        const foodSound = new Audio('sounds/eat.mp3');
+        const gameOverSound = new Audio('sounds/gameover.mp3');
+        foodSound.volume = 0.5;
+        gameOverSound.volume = 0.5;
+
+        // Particle system for food eating
+        let particles = [];
+        class Particle {
+            constructor(x, y, color, size, velocityX, velocityY, decay) {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.size = size;
+                this.velocityX = velocityX;
+                this.velocityY = velocityY;
+                this.alpha = 1;
+                this.decay = decay;
+            }
+
+            update() {
+                this.x += this.velocityX;
+                this.y += this.velocityY;
+                this.alpha -= this.decay;
+                this.size *= 0.98;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, this.alpha);
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x + gridSize / 2, this.y + gridSize / 2, this.size / 2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        function createParticles(x, y, count, color) {
+            for (let i = 0; i < count; i++) {
+                const size = Math.random() * (gridSize / 3) + 2;
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 2 + 0.5;
+                const velocityX = Math.cos(angle) * speed;
+                const velocityY = Math.sin(angle) * speed;
+                const decay = Math.random() * 0.03 + 0.01;
+                particles.push(new Particle(x, y, color, size, velocityX, velocityY, decay));
+            }
+        }
+
+        // Function to calculate and set canvas dimensions dynamically
+        function setCanvasDimensions() {
+            const wrapper = canvas.parentElement; // The .canvas-wrapper
+            let effectiveAvailableWidth = wrapper.clientWidth;
+            let effectiveAvailableHeight = wrapper.clientHeight;
+
+            const maxDimension = Math.min(effectiveAvailableWidth, effectiveAvailableHeight);
+
+            // Ensure gridSize is at least 15px for playability
+            gridSize = Math.max(15, Math.floor(maxDimension / TARGET_CELLS_PER_SIDE));
+
+            // Set canvas internal dimensions to be an exact multiple of gridSize
+            canvasWidth = gridSize * TARGET_CELLS_PER_SIDE;
+            canvasHeight = gridSize * TARGET_CELLS_PER_SIDE;
+
+            canvas.width = canvasWidth;
+            canvas.height = canvasHeight;
+        }
+
+        // Debounce function
+        function debounce(func, delay) {
+            let timeout;
+            return function() {
+                const context = this;
+                const args = arguments;
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(context, args), delay);
+            };
+        }
+
+        // --- Game Initialization ---
+        function initGame() {
+            setCanvasDimensions();
+
+            // Set difficulty from localStorage or default to medium
+            difficulty = localStorage.getItem('snakeDifficulty') || 'medium';
+
+            switch (difficulty) {
+                case 'easy':
+                    initialGameSpeed = 250;
+                    speedIncrement = 5;
+                    break;
+                case 'hard':
+                    initialGameSpeed = 120;
+                    speedIncrement = 2;
+                    break;
+                case 'medium':
+                default:
+                    initialGameSpeed = 200;
+                    speedIncrement = 3;
+                    break;
+            }
+
+            snake = [
+                { x: 6 * gridSize, y: 5 * gridSize },
+                { x: 5 * gridSize, y: 5 * gridSize },
+                { x: 4 * gridSize, y: 5 * gridSize }
+            ];
+            direction = 'right';
+            changingDirection = false;
+            score = 0;
+            gameOver = false;
+            gameSpeed = initialGameSpeed;
+            isPaused = true;
+            particles = []; // Clear particles on new game
+
+            scoreCardValue.textContent = score;
+            highScoreCardValue.textContent = highScore;
+            messageDisplay.textContent = "";
+            updatePlayPauseButtonUI(); // Update play/pause button based on isPaused
+
+            // Set initial content for the start screen overlay
+            gameOverlay.innerHTML = `
+                <div class="modal">
+                    <div class="overlay-icon">🐍</div>
+                    <div class="overlay-title">SNAKE GAME</div>
+                    <div class="overlay-text">Press 'P' or Click Play to Start</div>
+                    <div class="overlay-buttons">
+                        <button class="overlay-play-button" aria-label="Play Game"><i class="fa-solid fa-play"></i> Play</button>
+                    <button class="overlay-restart-button" aria-label="Restart Game"><i class="fa-solid fa-arrows-rotate"></i> Restart</button>
+                    <button class="overlay-settings-button" aria-label="Open Settings"><i class="fa-solid fa-gear"></i> Settings</button>
+                    </div>
+                </div>
+            `;
+
+            // Add event listeners to overlay buttons
+            const overlayPlayBtn = gameOverlay.querySelector('.overlay-play-button');
+            const overlayRestartBtn = gameOverlay.querySelector('.overlay-restart-button');
+            const overlaySettingsBtn = gameOverlay.querySelector('.overlay-settings-button'); // New
+            if (overlayPlayBtn) overlayPlayBtn.addEventListener('click', togglePlayPause);
+            if (overlayRestartBtn) overlayRestartBtn.addEventListener('click', initGame);
+            if (overlaySettingsBtn) overlaySettingsBtn.addEventListener('click', toggleSettings); // New
+
+            gameOverlay.classList.add('active');
+
+            // Apply initial sound state
+            foodSound.muted = !isSoundOn;
+            gameOverSound.muted = !isSoundOn;
+            updateSettingsOverlayUI(); // Update the settings overlay for initial state
+
+            generateFood();
+            clearCanvas();
+            drawGrid(); // Draw grid on init
+            drawSnake();
+            drawFood();
+
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+            }
+            canvas.classList.remove('glow-food', 'glow-gameover'); // Clear any glow classes
+            canvas.focus(); // Ensure canvas has keyboard focus on init
+        }
+
+        // --- Drawing Functions ---
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+        }
+
+        function drawGrid() {
+            ctx.strokeStyle = GRID_COLOR;
+            ctx.lineWidth = 1;
+            for (let i = 0; i < canvasWidth / gridSize; i++) {
+                ctx.beginPath();
+                ctx.moveTo(i * gridSize, 0);
+                ctx.lineTo(i * gridSize, canvasHeight);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(0, i * gridSize);
+                ctx.lineTo(canvasWidth, i * gridSize);
+                ctx.stroke();
+            }
+        }
+
+        function drawSnakePart(part) {
+            ctx.fillStyle = SNAKE_COLOR;
+            ctx.strokeStyle = SNAKE_COLOR;
+            ctx.lineWidth = 2;
+
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = SNAKE_GLOW_COLOR;
+
+            ctx.fillRect(part.x, part.y, gridSize, gridSize);
+            ctx.strokeRect(part.x, part.y, gridSize, gridSize);
+
+            ctx.shadowBlur = 0;
+            ctx.shadowColor = 'transparent';
+        }
+
+        function drawSnake() {
+            snake.forEach(drawSnakePart);
+        }
+
+        function drawFood() {
+            const foodRadius = gridSize / 2;
+            const centerX = food.x + foodRadius;
+            const centerY = food.y + foodRadius;
+
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, foodRadius * 0.8, 0, Math.PI * 2);
+            ctx.fillStyle = FOOD_COLOR;
+            ctx.fill();
+
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = FOOD_GLOW_COLOR;
+            ctx.globalAlpha = 0.6;
+            ctx.arc(centerX, centerY, foodRadius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1;
+
+            ctx.shadowBlur = 0;
+            ctx.shadowColor = 'transparent';
+        }
+
+        // --- Game Logic ---
+        function generateFood() {
+            let foodX, foodY;
+            let collisionWithSnake;
+
+            do {
+                foodX = Math.floor(Math.random() * (canvasWidth / gridSize)) * gridSize;
+                foodY = Math.floor(Math.random() * (canvasHeight / gridSize)) * gridSize;
+                collisionWithSnake = snake.some(part => part.x === foodX && part.y === foodY);
+            } while (collisionWithSnake);
+
+            food = { x: foodX, y: foodY };
+        }
+
+        function moveSnake() {
+            if (gameOver) return;
+
+            const head = { x: snake[0].x, y: snake[0].y };
+
+            switch (direction) {
+                case 'up':
+                    head.y -= gridSize;
+                    break;
+                case 'down':
+                    head.y += gridSize;
+                    break;
+                case 'left':
+                    head.x -= gridSize;
+                    break;
+                case 'right':
+                    head.x += gridSize;
+                    break;
+            }
+
+            snake.unshift(head);
+
+            if (head.x === food.x && head.y === food.y) {
+                score += 10;
+                scoreCardValue.textContent = score;
+                scoreCardValue.style.transform = 'scale(1.2)';
+                scoreCardValue.style.color = SNAKE_COLOR; // Animate color
+                setTimeout(() => {
+                    scoreCardValue.style.transform = 'scale(1)';
+                    scoreCardValue.style.color = getComputedStyle(document.documentElement).getPropertyValue('--text-light');
+                }, 150);
+
+                generateFood();
+                if (isSoundOn) foodSound.play();
+                createParticles(food.x, food.y, 10, FOOD_GLOW_COLOR);
+
+                canvas.classList.add('glow-food');
+                setTimeout(() => canvas.classList.remove('glow-food'), 200);
+
+                if (gameSpeed > 80) {
+                    gameSpeed -= speedIncrement;
+                }
+            } else {
+                snake.pop();
+            }
+        }
+
+        function checkCollision() {
+            const head = snake[0];
+
+            const hitLeftWall = head.x < 0;
+            const hitRightWall = head.x >= canvasWidth;
+            const hitTopWall = head.y < 0;
+            const hitBottomWall = head.y >= canvasHeight;
+
+            if (hitLeftWall || hitRightWall || hitTopWall || hitBottomWall) {
+                return true;
+            }
+
+            for (let i = 4; i < snake.length; i++) {
+                if (head.x === snake[i].x && head.y === snake[i].y) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function endGame() {
+            gameOver = true;
+            cancelAnimationFrame(animationFrameId);
+
+            if (isSoundOn) gameOverSound.play();
+
+            canvas.classList.add('glow-gameover');
+
+            let overlayButtonsHtml = `<button class="overlay-restart-button" aria-label="Restart Game"><i class="fa-solid fa-arrows-rotate"></i> Play Again</button>`;
+
+            let overlayContentInner;
+            let highScoreClass = '';
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('snakeHighScore', highScore);
+                highScoreCardValue.textContent = highScore;
+                highScoreCardValue.style.transform = 'scale(1.2)'; // Animate high score card
+                highScoreCardValue.style.color = getComputedStyle(document.documentElement).getPropertyValue('--secondary-cyan');
+                setTimeout(() => {
+                    highScoreCardValue.style.transform = 'scale(1)';
+                    highScoreCardValue.style.color = getComputedStyle(document.documentElement).getPropertyValue('--text-light');
+                }, 300);
+                highScoreClass = 'new-high-score'; // Add class for highlighting
+                overlayContentInner = `
+                    <div class="overlay-icon">🏆</div>
+                    <div class="overlay-title">NEW HIGH SCORE!</div>
+                    <div class="overlay-score-detail">⭐ Your Score: <span class="value">${score}</span></div>
+                    <div class="overlay-score-detail ${highScoreClass}">🏆 High Score: <span class="value">${highScore}</span></div>
+                    <div class="overlay-text">You've set a new record! Click Play Again to continue your legend!</div>
+                    <div class="overlay-buttons">
+                        ${overlayButtonsHtml}
+                    </div>
+                `;
+            } else {
+                overlayContentInner = `
+                    <div class="overlay-icon">💀</div>
+                    <div class="overlay-title">GAME OVER!</div>
+                    <div class="overlay-score-detail">⭐ Your Score: <span class="value">${score}</span></div>
+                    <div class="overlay-score-detail">🏆 High Score: <span class="value">${highScore}</span></div>
+                    <div class="overlay-text">Click Play Again to try for a better score!</div>
+                    <div class="overlay-buttons">
+                        ${overlayButtonsHtml}
+                    </div>
+                `;
+            }
+            gameOverlay.innerHTML = `<div class="modal">${overlayContentInner}</div>`;
+            const overlayRestartBtnGameOver = gameOverlay.querySelector('.overlay-restart-button');
+            if (overlayRestartBtnGameOver) overlayRestartBtnGameOver.addEventListener('click', initGame);
+
+
+            messageDisplay.textContent = "";
+            gameOverlay.classList.add('active');
+        }
+
+        function updateGameLogic() {
+            if (gameOver) return;
+
+            changingDirection = false;
+
+            clearCanvas();
+            drawGrid();
+            drawFood();
+            moveSnake();
+            drawSnake();
+
+            for (let i = particles.length - 1; i >= 0; i--) {
+                particles[i].update();
+                particles[i].draw();
+                if (particles[i].alpha <= 0 || particles[i].size <= 1) {
+                    particles.splice(i, 1);
+                }
+            }
+
+            if (checkCollision()) {
+                endGame();
+            }
+        }
+
+        function gameLoopRAF(currentTime) {
+            animationFrameId = requestAnimationFrame(gameLoopRAF);
+
+            if (isPaused || gameOver) {
+                if (particles.length > 0) {
+                    clearCanvas();
+                    drawGrid();
+                    drawFood();
+                    drawSnake();
+                    for (let i = particles.length - 1; i >= 0; i--) {
+                        particles[i].update();
+                        particles[i].draw();
+                        if (particles[i].alpha <= 0 || particles[i].size <= 1) {
+                            particles.splice(i, 1);
+                        }
+                    }
+                }
+                return;
+            }
+
+            const deltaTime = currentTime - lastFrameTime;
+            lastFrameTime = currentTime;
+
+            timeSinceLastGameUpdate += deltaTime;
+
+            if (timeSinceLastGameUpdate >= gameSpeed) {
+                updateGameLogic();
+                timeSinceLastGameUpdate -= gameSpeed;
+            }
+        }
+
+        // Helper to update the Play/Pause button's UI (text and icon)
+        function updatePlayPauseButtonUI() {
+            if (isPaused) {
+                playPauseButton.innerHTML = '<i class="fa-solid fa-play"></i> Play';
+                playPauseButton.setAttribute('aria-label', 'Play Game');
+            } else {
+                playPauseButton.innerHTML = '<i class="fa-solid fa-pause"></i> Pause';
+                playPauseButton.setAttribute('aria-label', 'Pause Game');
+            }
+        }
+
+        function changeDirection(event) {
+            const keyPressed = event.key;
+            const isDirectionKey = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'w', 'a', 's', 'd'].includes(keyPressed);
+            const isPauseKey = keyPressed === 'p' || keyPressed === 'P' || keyPressed === ' ';
+
+            if (isPauseKey && !gameOver && !settingsOverlay.classList.contains('active')) { // Prevent pausing if settings are open
+                event.preventDefault();
+                togglePlayPause();
+                return;
+            }
+
+            if (gameOver || isPaused || changingDirection) {
+                if (isDirectionKey) event.preventDefault();
+                return;
+            }
+            // If settings overlay is active, prevent game controls
+            if (settingsOverlay.classList.contains('active')) {
+                return;
+            }
+
+            changingDirection = true;
+
+            if (isDirectionKey) {
+                event.preventDefault();
+            }
+
+            const goingUp = direction === 'up';
+            const goingDown = direction === 'down';
+            const goingLeft = direction === 'left';
+            const goingRight = direction === 'right';
+
+            if ((keyPressed === 'ArrowLeft' || keyPressed === 'a') && !goingRight) {
+                direction = 'left';
+            } else if ((keyPressed === 'ArrowUp' || keyPressed === 'w') && !goingDown) {
+                direction = 'up';
+            } else if ((keyPressed === 'ArrowRight' || keyPressed === 'd') && !goingLeft) {
+                direction = 'right';
+            } else if ((keyPressed === 'ArrowDown' || keyPressed === 's') && !goingUp) {
+                direction = 'down';
+            }
+        }
+
+        function togglePlayPause() {
+            if (gameOver || settingsOverlay.classList.contains('active')) return; // Cannot play/pause if game over or settings open
+
+            isPaused = !isPaused;
+            updatePlayPauseButtonUI(); // Update UI immediately
+
+            if (isPaused) {
+                cancelAnimationFrame(animationFrameId);
+                messageDisplay.textContent = "";
+
+                let overlayButtonsHtml = `
+                    <button class="overlay-play-button" aria-label="Play Game"><i class="fa-solid fa-play"></i> Resume</button>
+                    <button class="overlay-restart-button" aria-label="Restart Game"><i class="fa-solid fa-arrows-rotate"></i> Restart</button>
+                    <button class="overlay-settings-button" aria-label="Open Settings"><i class="fa-solid fa-gear"></i> Settings</button>
+                `;
+
+                gameOverlay.innerHTML = `
+                    <div class="modal">
+                        <div class="overlay-icon">⏸</div>
+                        <div class="overlay-title">GAME PAUSED</div>
+                        <div class="overlay-score-detail">⭐ Current Score: <span class="value">${score}</span></div>
+                        <div class="overlay-score-detail">🏆 High Score: <span class="value">${highScore}</span></div>
+                        <div class="overlay-text">Press 'P' or Click Resume!</div>
+                        <div class="overlay-buttons">
+                            ${overlayButtonsHtml}
+                        </div>
+                    </div>
+                `;
+                gameOverlay.querySelector('.overlay-play-button').addEventListener('click', togglePlayPause);
+                gameOverlay.querySelector('.overlay-restart-button').addEventListener('click', initGame);
+                gameOverlay.querySelector('.overlay-settings-button').addEventListener('click', toggleSettings); // New
+
+                gameOverlay.classList.add('active');
+            } else { // Exiting paused state, resuming game
+                lastFrameTime = performance.now();
+                timeSinceLastGameUpdate = 0;
+                animationFrameId = requestAnimationFrame(gameLoopRAF);
+                messageDisplay.textContent = "Use Arrow Keys or WASD to Play!";
+                gameOverlay.classList.remove('active');
+                canvas.focus();
+            }
+        }
+
+        function updateSettingsOverlayUI() {
+            const difficultySelect = settingsOverlay.querySelector('#settingsDifficulty');
+            const soundToggleCheckbox = settingsOverlay.querySelector('#settingsSoundToggle');
+            const soundToggleLabel = settingsOverlay.querySelector('label[for="settingsSoundToggle"]');
+
+            if (difficultySelect) {
+                difficultySelect.value = difficulty; // Set current game difficulty
+                difficultySelect.addEventListener('change', (e) => {
+                    difficulty = e.target.value;
+                    localStorage.setItem('snakeDifficulty', difficulty);
+                });
+            }
+
+            if (soundToggleCheckbox) {
+                soundToggleCheckbox.checked = isSoundOn;
+                soundToggleCheckbox.addEventListener('change', () => {
+                    isSoundOn = soundToggleCheckbox.checked;
+                    foodSound.muted = !isSoundOn;
+                    gameOverSound.muted = !isSoundOn;
+                    localStorage.setItem('snakeSoundState', isSoundOn ? 'on' : 'off');
+                    if (soundToggleLabel) {
+                        soundToggleLabel.innerHTML = `<i class="fa-solid fa-volume-${isSoundOn ? 'high' : 'xmark'}"></i> Sound`;
+                    }
+                });
+            }
+            if (soundToggleLabel) {
+                soundToggleLabel.innerHTML = `<i class="fa-solid fa-volume-${isSoundOn ? 'high' : 'xmark'}"></i> Sound`;
+            }
+        }
+
+        function toggleSettings() {
+            // Close game overlay if it's active and not game over
+            if (gameOverlay.classList.contains('active') && !gameOver && !isPaused) {
+                togglePlayPause(); // Pause the game first if it's running
+            }
+
+            // Toggle settings overlay visibility
+            settingsOverlay.classList.toggle('active');
+
+            if (settingsOverlay.classList.contains('active')) {
+                // When opening settings, ensure the UI reflects current states
+                updateSettingsOverlayUI();
+                cancelAnimationFrame(animationFrameId); // Pause game logic while settings are open
+                settingsOverlay.querySelector('.overlay-close-button').addEventListener('click', toggleSettings);
+                settingsOverlay.querySelector('#settingsDifficulty').focus(); // Focus on first interactive element
+            } else {
+                // When closing settings, if game was already running, resume it.
+                // If game was paused (e.g., from initial state or explicit pause), keep it paused.
+                if (!isPaused && !gameOver) { // Only resume if game was running before settings opened
+                    lastFrameTime = performance.now();
+                    timeSinceLastGameUpdate = 0;
+                    animationFrameId = requestAnimationFrame(gameLoopRAF);
+                } else if (gameOver) {
+                    // If game is over, and settings were opened, ensure game over overlay is still active when settings close
+                    gameOverlay.classList.add('active');
+                } else {
+                    // If game was paused, ensure pause overlay is active
+                    gameOverlay.classList.add('active');
+                }
+                canvas.focus();
+            }
+        }
+
+        // --- Event Listeners ---
+        document.addEventListener('keydown', changeDirection);
+        restartButton.addEventListener('click', initGame);
+        playPauseButton.addEventListener('click', togglePlayPause);
+        settingsButton.addEventListener('click', toggleSettings); // New settings button listener
+
+        const desktopControls = document.getElementById('desktopControls');
+        const scoreBoard = document.querySelector('.score-board');
+        const hudElements = [desktopControls, mobileControls, scoreBoard]; // Group HUD elements
+
+        // In windowed mode, HUD should always be fully visible
+        hudElements.forEach(el => el.classList.add('active-hud'));
+
+        if (mobileControls) {
+            mobileControls.querySelectorAll('.mobile-button').forEach(button => {
+                button.addEventListener('click', (event) => {
+                    // If game is paused by the initial overlay, any mobile button click should start it
+                    if (isPaused && !gameOver && !settingsOverlay.classList.contains('active')) {
+                         togglePlayPause();
+                         if (gameOver) return;
+                    }
+                    const mobileDir = event.currentTarget.dataset.direction;
+                    const simulatedEvent = {
+                        key: '',
+                        preventDefault: () => {}, // Provide a dummy preventDefault
+                    };
+
+                    switch (mobileDir) {
+                        case 'up':
+                            simulatedEvent.key = 'ArrowUp';
+                            break;
+                        case 'down':
+                            simulatedEvent.key = 'ArrowDown';
+                            break;
+                        case 'left':
+                            simulatedEvent.key = 'ArrowLeft';
+                            break;
+                        case 'right':
+                            simulatedEvent.key = 'ArrowRight';
+                            break;
+                    }
+                    changeDirection(simulatedEvent);
+                });
+            });
+        }
+
+        window.addEventListener('resize', debounce(() => {
+            const wasGameRunning = !isPaused && !gameOver;
+            if (wasGameRunning) {
+                togglePlayPause();
+                messageDisplay.textContent = "Game Resized. Click Play or 'P' to resume.";
+            }
+
+            setCanvasDimensions();
+
+            clearCanvas();
+            drawGrid();
+            drawFood();
+            drawSnake();
+            for (let i = particles.length - 1; i >= 0; i--) {
+                particles[i].draw();
+            }
+
+            if (isPaused || gameOver) {
+                gameOverlay.classList.add('active');
+                updatePlayPauseButtonUI();
+            }
+        }, 250));
+
+        // Initial game start
+        initGame();
+
+        // Loading animation for body
+        document.body.classList.add('loaded');
+    </script>
+</body>
+</html>
