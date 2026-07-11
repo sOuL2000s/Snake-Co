@@ -262,8 +262,17 @@
             font-size: clamp(0.8rem, 1.5vmin, 1.1rem);
             margin-top: var(--spacing-sm);
             color: var(--secondary-cyan);
-            min-height: 1.5rem;
+            min-height: 1.5rem; /* Ensure consistent height even when empty */
             user-select: none;
+            opacity: 0; /* Hidden by default */
+            transform: translateY(10px); /* Slightly off-screen */
+            transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+            will-change: opacity, transform;
+            pointer-events: none; /* Prevent interaction */
+        }
+        #message.active {
+            opacity: 1;
+            transform: translateY(0);
         }
 
         /* Desktop Controls */
@@ -431,7 +440,7 @@
         .settings-overlay .overlay-title { color: var(--secondary-cyan); text-shadow: 0 0 18px rgba(6, 182, 212, 0.8); }
         .settings-overlay .overlay-text { color: var(--text-light); } /* Default for generic text */
 
-        .fullscreen-choice {
+        .setting-option { /* Renamed from .fullscreen-choice for semantic clarity */
             display: flex;
             align-items: center;
             gap: 0.75rem;
@@ -442,7 +451,7 @@
             cursor: pointer;
             user-select: none;
         }
-        .fullscreen-choice input[type="checkbox"] {
+        .setting-option input[type="checkbox"] {
             appearance: none;
             -webkit-appearance: none;
             -moz-appearance: none;
@@ -456,16 +465,16 @@
             position: relative;
             outline: none;
         }
-        .fullscreen-choice input[type="checkbox"]:checked {
+        .setting-option input[type="checkbox"]:checked {
             background: var(--primary-green);
             border-color: var(--primary-green-dark);
             box-shadow: 0 0 8px var(--primary-green);
         }
-        .fullscreen-choice input[type="checkbox"]:focus-visible {
+        .setting-option input[type="checkbox"]:focus-visible {
             border-color: var(--secondary-cyan);
             box-shadow: 0 0 10px var(--secondary-cyan);
         }
-        .fullscreen-choice input[type="checkbox"]::after {
+        .setting-option input[type="checkbox"]::after {
             content: '\2713'; /* Checkmark character */
             position: absolute;
             top: 50%;
@@ -475,24 +484,24 @@
             color: var(--bg-dark); /* Dark checkmark on green background */
             transition: transform 0.2s ease-out;
         }
-        .fullscreen-choice input[type="checkbox"]:checked::after {
+        .setting-option input[type="checkbox"]:checked::after {
             transform: translate(-50%, -50%) scale(1);
         }
-        .fullscreen-choice label {
+        .setting-option label {
             cursor: pointer;
             display: flex;
             align-items: center;
             gap: 0.5rem;
         }
-        .fullscreen-choice label i {
+        .setting-option label i {
             font-size: 1.1em;
             color: var(--primary-green);
             transition: color 0.2s ease;
         }
-        .fullscreen-choice input[type="checkbox"]:checked + label i {
+        .setting-option input[type="checkbox"]:checked + label i {
             color: var(--primary-green); /* Stays green when checked */
         }
-        .fullscreen-choice input[type="checkbox"] + label i.fa-volume-xmark {
+        .setting-option input[type="checkbox"] + label i.fa-volume-xmark {
             color: var(--danger-red); /* Indicate muted state */
         }
 
@@ -742,6 +751,15 @@
                 flex: 1 1 45%; /* Allow two cards per row on small screens */
             }
 
+            /* Overlay buttons on mobile */
+            .pause-overlay .overlay-buttons button {
+                min-width: unset; /* Allow flex to determine width */
+                width: 100%; /* Take full width when stacked */
+                max-width: 280px; /* Max width to prevent overly wide buttons on tablets */
+                height: 48px; /* Slightly smaller touch target for smaller screens */
+                padding: var(--spacing-sm) var(--spacing-lg); /* Adjust padding */
+            }
+
             .controls {
                 display: none; /* Hide desktop controls on smaller screens */
             }
@@ -754,116 +772,113 @@
             }
         }
 
-
-
         /* Hide desktop controls always, show mobile via media query */
-        @media (min-width: 769px) { /* On desktop-like sizes */
+        @media (min-width: 769px) { /* On desktop-like sizes, hide mobile controls */
             .mobile-controls {
                 display: none;
             }
-        }
-        @media (max-width: 768px) { /* On tablet/mobile sizes */
-            .controls {
-                display: none;
-            }
-            .mobile-controls {
+            .controls { /* Ensure desktop controls are visible on desktop */
                 display: flex;
             }
         }
+        /* The @media (max-width: 768px) for controls/mobile-controls is already defined
+           in the 'Responsive Adjustments for Mobile' block above, so removed redundancy here. */
     </style>
 </head>
 <body class="loaded">
-    <div class="game-header">
-        <h1>🐍 SNAKE</h1>
-        <p class="subtitle">Modern Arcade Edition</p>
-    </div>
-    <div class="game-container">
-        <div class="score-board">
-            <div id="scoreCard" class="stat-card" aria-live="polite" aria-atomic="true">
-                <span class="label"><i class="fa-solid fa-star"></i> SCORE</span>
-                <span class="value">0</span>
+    <main>
+        <div class="game-header">
+            <h1>🐍 SNAKE</h1>
+            <p class="subtitle">Modern Arcade Edition</p>
+        </div>
+        <div class="game-container">
+            <div class="score-board">
+                <div id="scoreCard" class="stat-card" aria-live="polite" aria-atomic="true">
+                    <span class="label"><i class="fa-solid fa-star"></i> SCORE</span>
+                    <span class="value">0</span>
+                </div>
+                <div id="highScoreCard" class="stat-card" aria-live="polite" aria-atomic="true">
+                    <span class="label"><i class="fa-solid fa-trophy"></i> HIGH SCORE</span>
+                    <span class="value">0</span>
+                </div>
+                <!-- Optional: Add speed card -->
+                <!-- <div id="speedCard" class="stat-card" aria-live="polite" aria-atomic="true">
+                    <span class="label"><i class="fa-solid fa-gauge-high"></i> SPEED</span>
+                    <span class="value">1x</span>
+                </div> -->
             </div>
-            <div id="highScoreCard" class="stat-card" aria-live="polite" aria-atomic="true">
-                <span class="label"><i class="fa-solid fa-trophy"></i> HIGH SCORE</span>
-                <span class="value">0</span>
+
+            <div class="canvas-wrapper">
+                <canvas id="gameCanvas" role="application" aria-label="Snake Game Arena" tabindex="0"></canvas>
             </div>
-            <!-- Optional: Add speed card -->
-            <!-- <div id="speedCard" class="stat-card" aria-live="polite" aria-atomic="true">
-                <span class="label"><i class="fa-solid fa-gauge-high"></i> SPEED</span>
-                <span class="value">1x</span>
-            </div> -->
-        </div>
 
-        <div class="canvas-wrapper">
-            <canvas id="gameCanvas" role="application" aria-label="Snake Game Arena" tabindex="0"></canvas>
-        </div>
+            <!-- Overlays are now direct children of game-container to cover all content -->
+            <div id="gameOverlay" class="pause-overlay">
+                <!-- Content dynamically set by JavaScript for start, pause, game over -->
+            </div>
 
-        <!-- Overlays are now direct children of game-container to cover all content -->
-        <div id="gameOverlay" class="pause-overlay"> <!-- CRITICAL: Changed class to pause-overlay -->
-            <!-- Content dynamically set by JavaScript for start, pause, game over -->
-        </div>
-
-        <!-- New Settings Overlay -->
-        <div id="settingsOverlay" class="settings-overlay">
-            <div class="modal">
-                <div class="overlay-icon"><i class="fa-solid fa-gear"></i></div>
-                <div class="overlay-title">SETTINGS</div>
-                <div class="difficulty-selector">
-                    <label for="settingsDifficulty">Difficulty:</label>
+            <!-- New Settings Overlay -->
+            <div id="settingsOverlay" class="settings-overlay">
+                <div class="modal">
+                    <div class="overlay-icon"><i class="fa-solid fa-gear"></i></div>
+                    <div class="overlay-title">SETTINGS</div>
+                    <div class="difficulty-selector">
+                        <label for="settingsDifficulty">Difficulty:</label>
                     <select id="settingsDifficulty">
                         <option value="easy">Easy</option>
                         <option value="medium">Medium</option>
                         <option value="hard">Hard</option>
                     </select>
                 </div>
-                <div class="fullscreen-choice"> <!-- Reusing .fullscreen-choice for sound toggle styling -->
+                <div class="setting-option"> <!-- Renamed from .fullscreen-choice for semantic clarity -->
                     <input type="checkbox" id="settingsSoundToggle">
                     <label for="settingsSoundToggle"><i class="fa-solid fa-volume-high"></i> Sound</label>
                 </div>
                 <div class="overlay-buttons">
                     <button class="overlay-close-button" aria-label="Close Settings"><i class="fa-solid fa-check"></i> Done</button>
                 </div>
+                </div>
             </div>
-        </div>
 
-        <p id="message" aria-live="polite" aria-atomic="true"></p>
+            <p id="message" class="message-display" aria-live="polite" aria-atomic="true"></p>
 
-        <div class="controls" id="desktopControls">
-            <button id="restartButton" aria-label="Restart Game" title="Restart Game (R)">
-                <i class="fa-solid fa-arrows-rotate"></i> Restart
-            </button>
-            <button id="pauseButton" aria-label="Pause or Play Game" title="Pause/Play (P/Space)">
-                <i class="fa-solid fa-play"></i> Play
-            </button>
-
-            <button id="settingsButton" aria-label="Open Settings" title="Game Settings">
-                <i class="fa-solid fa-gear"></i> Settings
-            </button>
-        </div>
-
-        <!-- Mobile Controls (Directional Pad) -->
-        <div id="mobileControls" class="mobile-controls">
-            <button class="mobile-button" data-direction="up" aria-label="Move Up">
-                <i class="fa-solid fa-caret-up"></i>
-            </button>
-            <div class="horizontal-buttons">
-                <button class="mobile-button" data-direction="left" aria-label="Move Left">
-                    <i class="fa-solid fa-caret-left"></i>
+            <div class="controls" id="desktopControls">
+                <button id="restartButton" aria-label="Restart Game" title="Restart Game (R)">
+                    <i class="fa-solid fa-arrows-rotate"></i> Restart
                 </button>
-                <button class="mobile-button" data-direction="right" aria-label="Move Right">
-                    <i class="fa-solid fa-caret-right"></i>
+                <button id="pauseButton" aria-label="Pause or Play Game" title="Pause/Play (P/Space)">
+                    <i class="fa-solid fa-play"></i> Play
+                </button>
+
+                <button id="settingsButton" aria-label="Open Settings" title="Game Settings">
+                    <i class="fa-solid fa-gear"></i> Settings
                 </button>
             </div>
-            <button class="mobile-button" data-direction="down" aria-label="Move Down">
-                <i class="fa-solid fa-caret-down"></i>
-            </button>
-        </div>
-    </div>
 
-    <div class="game-footer">
+            <!-- Mobile Controls (Directional Pad) -->
+            <div id="mobileControls" class="mobile-controls">
+                <button class="mobile-button" data-direction="up" aria-label="Move Up">
+                    <i class="fa-solid fa-caret-up"></i>
+                </button>
+                <div class="horizontal-buttons">
+                    <button class="mobile-button" data-direction="left" aria-label="Move Left">
+                        <i class="fa-solid fa-caret-left"></i>
+                    </button>
+                    <button class="mobile-button" data-direction="right" aria-label="Move Right">
+                        <i class="fa-solid fa-caret-right"></i>
+                    </button>
+                </div>
+                <button class="mobile-button" data-direction="down" aria-label="Move Down">
+                    <i class="fa-solid fa-caret-down"></i>
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <footer class="game-footer">
         <p>Use Arrow Keys or WASD & Mobile D-Pad | Press 'P' or Space to Pause</p>
-        <p>Made with <i class="fa-solid fa-heart" style="color: #DB2777;"></i> and HTML Canvas</p>
-    </div>
+        <p><small>Made with <i class="fa-solid fa-heart" style="color: #DB2777;"></i> and HTML Canvas</small></p>
+    </footer>
 
     <script>
         // Get the canvas and its 2D rendering context
