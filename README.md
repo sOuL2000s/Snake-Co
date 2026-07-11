@@ -1,3 +1,11 @@
+## 🎮 Snake & Co. Game Live Demo
+
+[Play Snake & Co. Now!](https://snakeandco.netlify.app/)
+
+
+
+
+
 # Remote Screen Recorder MVP for Exam Monitoring
 
 This project implements a Minimum Viable Product (MVP) for a remote screen recording system, primarily intended for proof-of-concept for exam monitoring scenarios. The core idea is to allow a remote administrator to initiate and stop screen recordings on client machines, with the recordings being uploaded to a central server. Students/users on the client machines have no control over the recording process.
